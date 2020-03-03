@@ -1,4 +1,4 @@
-/* $OpenBSD: auth2-chall.c,v 1.51 2019/09/06 04:53:27 djm Exp $ */
+/* $OpenBSD: auth2-chall.c,v 1.53 2020/02/26 13:40:09 jsg Exp $ */
 /*
  * Copyright (c) 2001 Markus Friedl.  All rights reserved.
  * Copyright (c) 2001 Per Allansson.  All rights reserved.
@@ -29,9 +29,9 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "xmalloc.h"
 #include "ssh2.h"
@@ -147,8 +147,7 @@ kbdint_free(KbdintAuthctxt *kbdintctxt)
 	if (kbdintctxt->device)
 		kbdint_reset_device(kbdintctxt);
 	free(kbdintctxt->devices);
-	explicit_bzero(kbdintctxt, sizeof(*kbdintctxt));
-	free(kbdintctxt);
+	freezero(kbdintctxt, sizeof(*kbdintctxt));
 }
 /* get next device */
 static int

@@ -1,4 +1,4 @@
-/* $OpenBSD: cipher.c,v 1.113 2019/09/06 05:23:55 djm Exp $ */
+/* $OpenBSD: cipher.c,v 1.115 2020/02/26 13:40:09 jsg Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -170,6 +170,17 @@ cipher_reset_multithreaded(void)
 	cipher_by_name("aes256-ctr")->evptype = evp_aes_ctr_mt;
 }
 #endif
+
+const char *
+compression_alg_list(int compression)
+{
+#ifdef WITH_ZLIB
+	return compression ? "zlib@openssh.com,zlib,none" :
+	    "none,zlib@openssh.com,zlib";
+#else
+	return "none";
+#endif
+}
 
 u_int
 cipher_blocksize(const struct sshcipher *c)
@@ -346,8 +357,7 @@ cipher_init(struct sshcipher_ctx **ccp, const struct sshcipher *cipher,
 #ifdef WITH_OPENSSL
 			EVP_CIPHER_CTX_free(cc->evp);
 #endif /* WITH_OPENSSL */
-			explicit_bzero(cc, sizeof(*cc));
-			free(cc);
+			freezero(cc, sizeof(*cc));
 		}
 	}
 	return ret;
@@ -452,8 +462,7 @@ cipher_free(struct sshcipher_ctx *cc)
 	EVP_CIPHER_CTX_free(cc->evp);
 	cc->evp = NULL;
 #endif
-	explicit_bzero(cc, sizeof(*cc));
-	free(cc);
+	freezero(cc, sizeof(*cc));
 }
 
 /*

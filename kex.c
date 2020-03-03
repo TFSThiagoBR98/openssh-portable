@@ -1,4 +1,4 @@
-/* $OpenBSD: kex.c,v 1.155 2019/10/08 22:40:39 dtucker Exp $ */
+/* $OpenBSD: kex.c,v 1.157 2020/02/26 13:40:09 jsg Exp $ */
 /*
  * Copyright (c) 2000, 2001 Markus Friedl.  All rights reserved.
  *
@@ -33,7 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef HAVE_POLL_H
 #include <poll.h>
+#endif
 
 #ifdef WITH_OPENSSL
 #include <openssl/crypto.h>
@@ -669,8 +671,7 @@ kex_free_newkeys(struct newkeys *newkeys)
 	}
 	free(newkeys->mac.name);
 	explicit_bzero(&newkeys->mac, sizeof(newkeys->mac));
-	explicit_bzero(newkeys, sizeof(*newkeys));
-	free(newkeys);
+	freezero(newkeys, sizeof(*newkeys));
 }
 
 void
@@ -797,11 +798,14 @@ choose_comp(struct sshcomp *comp, char *client, char *server)
 
 	if (name == NULL)
 		return SSH_ERR_NO_COMPRESS_ALG_MATCH;
+#ifdef WITH_ZLIB
 	if (strcmp(name, "zlib@openssh.com") == 0) {
 		comp->type = COMP_DELAYED;
 	} else if (strcmp(name, "zlib") == 0) {
 		comp->type = COMP_ZLIB;
-	} else if (strcmp(name, "none") == 0) {
+	} else
+#endif	/* WITH_ZLIB */
+	if (strcmp(name, "none") == 0) {
 		comp->type = COMP_NONE;
 	} else {
 		error("%s: unsupported compression scheme %s", __func__, name);

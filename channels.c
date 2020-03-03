@@ -1,4 +1,4 @@
-/* $OpenBSD: channels.c,v 1.394 2019/07/07 01:05:00 dtucker Exp $ */
+/* $OpenBSD: channels.c,v 1.396 2020/02/26 13:40:09 jsg Exp $ */
 /*
  * Author: Tatu Ylonen <ylo@cs.hut.fi>
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
@@ -629,14 +629,12 @@ channel_free(struct ssh *ssh, Channel *c)
 		if (cc->abandon_cb != NULL)
 			cc->abandon_cb(ssh, c, cc->ctx);
 		TAILQ_REMOVE(&c->status_confirms, cc, entry);
-		explicit_bzero(cc, sizeof(*cc));
-		free(cc);
+		freezero(cc, sizeof(*cc));
 	}
 	if (c->filter_cleanup != NULL && c->filter_ctx != NULL)
 		c->filter_cleanup(ssh, c->self, c->filter_ctx);
 	sc->channels[c->self] = NULL;
-	explicit_bzero(c, sizeof(*c));
-	free(c);
+	freezero(c, sizeof(*c));
 }
 
 void
@@ -3329,8 +3327,7 @@ channel_input_status_confirm(int type, u_int32_t seq, struct ssh *ssh)
 		return 0;
 	cc->cb(ssh, type, c, cc->ctx);
 	TAILQ_REMOVE(&c->status_confirms, cc, entry);
-	explicit_bzero(cc, sizeof(*cc));
-	free(cc);
+	freezero(cc, sizeof(*cc));
 	return 0;
 }
 
@@ -3390,7 +3387,12 @@ channel_fwd_bind_addr(struct ssh *ssh, const char *listen_addr, int *wildcardp,
 		} else if (strcmp(listen_addr, "localhost") != 0 ||
 		    strcmp(listen_addr, "127.0.0.1") == 0 ||
 		    strcmp(listen_addr, "::1") == 0) {
-			/* Accept localhost address when GatewayPorts=yes */
+			/*
+			 * Accept explicit localhost address when
+			 * GatewayPorts=yes. The "localhost" hostname is
+			 * deliberately skipped here so it will listen on all
+			 * available local address families.
+			 */
 			addr = listen_addr;
 		}
 	} else if (strcmp(listen_addr, "127.0.0.1") == 0 ||
